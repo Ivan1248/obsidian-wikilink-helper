@@ -1,99 +1,69 @@
-import {App, Editor, MarkdownView, Modal, Notice, Plugin} from 'obsidian';
-import {DEFAULT_SETTINGS, MyPluginSettings, SampleSettingTab} from "./settings";
+import { Plugin, MarkdownView } from 'obsidian'
+import { AutoWikilinkDisplayTextSettings } from './types'
+import { DEFAULT_SETTINGS, AutoWikilinkDisplayTextSettingTab } from './settings'
+import { WikilinkNormalizer } from './normalizer'
+import { DisplayTextWriter } from './display-text-writer'
+import { CommandInterceptor } from './command-interceptor'
 
-// Remember to rename these classes and interfaces!
-
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class AutoWikilinkDisplayTextPlugin extends Plugin {
+	settings: AutoWikilinkDisplayTextSettings
+	normalizer: WikilinkNormalizer
+	displayTextWriter: DisplayTextWriter
+	commandInterceptor: CommandInterceptor
 
 	async onload() {
-		await this.loadSettings();
-
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
-
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
+		await this.loadSettings()
+		this.normalizer = new WikilinkNormalizer(this.app, this.settings)
+		this.displayTextWriter = new DisplayTextWriter(this.app, this.settings)
+		this.commandInterceptor = new CommandInterceptor(this.app, "editor:save-file", () => {
+			if (this.settings.normalizeOnSave) {
+				this.normalizer.normalizeCurrentFile()
 			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				editor.replaceSelection('Sample editor command');
+		})
+		this.addChild(this.commandInterceptor)
+
+		this.addSettingTab(new AutoWikilinkDisplayTextSettingTab(this.app, this))
+
+		// Existing behavior: listen for "|"
+		this.registerDomEvent(document, 'keydown', (event: KeyboardEvent) => {
+			if (event.key === '|') {
+				this.displayTextWriter.handlePipeKey(event)
 			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
+		})
+
+		// Invalidate normalizer cache on vault changes
+		this.registerEvent(this.app.vault.on('create', () => this.normalizer.invalidateCache()))
+		this.registerEvent(this.app.vault.on('delete', () => this.normalizer.invalidateCache()))
+		this.registerEvent(this.app.vault.on('rename', () => this.normalizer.invalidateCache()))
+
+		// Command: normalize current file
 		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-				return false;
+			id: "normalize-wikilinks-current-file",
+			name: "Normalize wikilinks in current file",
+			editorCheckCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(MarkdownView)
+				if (!view) return false
+				if (!checking) this.normalizer.normalizeCurrentFile()
+				return true
 			}
-		});
+		})
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			new Notice("Click");
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
-
+		// Command: normalize all files
+		this.addCommand({
+			id: "normalize-wikilinks-all-files",
+			name: "Normalize wikilinks in entire vault",
+			callback: () => this.normalizer.normalizeAllFiles()
+		})
 	}
 
 	onunload() {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<MyPluginSettings>);
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
 	}
 
 	async saveSettings() {
-		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		let {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
+		await this.saveData(this.settings)
 	}
 }
