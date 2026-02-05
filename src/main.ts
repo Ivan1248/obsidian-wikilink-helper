@@ -26,7 +26,7 @@ export default class AutoWikilinkDisplayTextPlugin extends Plugin {
 
 		// Existing behavior: listen for "|"
 		this.registerDomEvent(document, 'keydown', (event: KeyboardEvent) => {
-			if (event.key === '|') {
+			if (event.key === '|' && this.settings.enableAutoDisplayText) {
 				this.displayTextWriter.handlePipeKey(event)
 			}
 		})

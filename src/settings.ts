@@ -3,6 +3,7 @@ import { AutoWikilinkDisplayTextSettings } from './types'
 import AutoWikilinkDisplayTextPlugin from './main'
 
 export const DEFAULT_SETTINGS: AutoWikilinkDisplayTextSettings = {
+    enableAutoDisplayText: true,
     lowercaseFirstChar: true,
     normalizeOnSave: false,
     onlyMatchExistingNotes: true
@@ -25,22 +26,40 @@ export class AutoWikilinkDisplayTextSettingTab extends PluginSettingTab {
             .setHeading()
 
         new Setting(containerEl)
-            .setName('Lowercase first character')
-            .setDesc('Automatically lowercase the first character of the display text')
+            .setName('Enable auto display text')
+            .setDesc('Automatically insert display text when typing | at the end of a wikilink')
             .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.lowercaseFirstChar)
+                .setValue(this.plugin.settings.enableAutoDisplayText)
                 .onChange(async (value) => {
-                    this.plugin.settings.lowercaseFirstChar = value
+                    this.plugin.settings.enableAutoDisplayText = value
                     await this.plugin.saveSettings()
+                    this.display()
                 }))
+
+        if (this.plugin.settings.enableAutoDisplayText) {
+            new Setting(containerEl)
+                .setName('Lowercase first character')
+                .setDesc('Automatically lowercase the first character of the inserted display text')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.lowercaseFirstChar)
+                    .onChange(async (value) => {
+                        this.plugin.settings.lowercaseFirstChar = value
+                        await this.plugin.saveSettings()
+                    }))
+        }
 
         new Setting(containerEl)
             .setName("Wikilink normalization")
             .setHeading()
 
+        containerEl.createEl('p', {
+            text: 'Normalization ensures wikilinks use the correct file name casing (e.g., [[note]] → [[Note|note]] if the file is named "Note.md"). This is useful to prevent broken links in case-sensitive static site generators.',
+            cls: 'setting-item-description'
+        })
+
         new Setting(containerEl)
             .setName('Normalize on Ctrl+S')
-            .setDesc('Automatically normalize wikilinks in the current file when you press Ctrl+S (or Cmd+S)')
+            .setDesc('Normalize wikilinks when saving with Ctrl+S (Cmd+S on Mac)')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.normalizeOnSave)
                 .onChange(async (value) => {
@@ -50,7 +69,7 @@ export class AutoWikilinkDisplayTextSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Only normalize links to existing notes')
-            .setDesc('Only normalize links to files that exist in the vault')
+            .setDesc('When disabled, also adds display text to links targeting non-existent notes if they start with a lowercase letter')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.onlyMatchExistingNotes)
                 .onChange(async (value) => {
