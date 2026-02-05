@@ -22,11 +22,11 @@ export class AutoWikilinkDisplayTextSettingTab extends PluginSettingTab {
         containerEl.empty()
 
         new Setting(containerEl)
-            .setName("Auto display text")
+            .setName("Automatic display text insertion")
             .setHeading()
 
         new Setting(containerEl)
-            .setName('Enable auto display text')
+            .setName('Enable automatic display text insertion')
             .setDesc('Automatically insert display text when typing | at the end of a wikilink')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableAutoDisplayText)
@@ -53,7 +53,7 @@ export class AutoWikilinkDisplayTextSettingTab extends PluginSettingTab {
             .setHeading()
 
         containerEl.createEl('p', {
-            text: 'Normalization ensures wikilinks use the correct file name casing (e.g., [[note]] → [[Note|note]] if the file is named "Note.md"). This is useful to prevent broken links in case-sensitive static site generators.',
+            text: 'Normalization ensures wikilinks use the correct file name casing. E.g., if the file is named "Note.md", then [[note]] and [[note|note]] are normalized to [[Note|note]], while [[Note]] is left unchanged. This is useful to prevent broken links in case-sensitive static site generators.',
             cls: 'setting-item-description'
         })
 
