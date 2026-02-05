@@ -1,4 +1,4 @@
-import { App, MarkdownView, Editor } from 'obsidian'
+import { App, MarkdownView } from 'obsidian'
 import { AutoWikilinkDisplayTextSettings } from './types'
 
 export class DisplayTextWriter {
@@ -38,7 +38,7 @@ export class DisplayTextWriter {
         if (end === -1) return null
 
         const content = line.substring(start, end)
-        if (!/^\[\[[^\[\]|]+\]\]$/.test(content)) return null
+        if (!/^\[\[[^[\]|]+\]\]$/.test(content)) return null
 
         return { start: start, end: end, linkText: content.slice(2, -2) }
     }

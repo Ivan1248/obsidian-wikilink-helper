@@ -1,5 +1,15 @@
 import { App, Command, Component } from 'obsidian'
 
+/** Internal Obsidian API for command management (not part of public API) */
+interface AppWithCommands extends App {
+    commands?: { commands?: Record<string, Command> }
+}
+
+function getCommand(app: App, command: string): Command | undefined {
+    return (app as AppWithCommands).commands?.commands?.[command]
+}
+
+
 export class CommandInterceptor extends Component {
     private app: App
     private command: string
@@ -15,7 +25,7 @@ export class CommandInterceptor extends Component {
 
     onload() {
         // Source: https://github.com/hipstersmoothie/obsidian-plugin-prettier/blob/main/src/main.ts
-        const cmd = (this.app as any).commands?.commands?.[this.command] as Command
+        const cmd = getCommand(this.app, this.command)
         if (!cmd) return
         this.originalCheckCallback = cmd.checkCallback
         if (!this.originalCheckCallback) return
@@ -32,10 +42,11 @@ export class CommandInterceptor extends Component {
 
     onunload() {
         if (this.originalCheckCallback) {
-            const cmd = (this.app as any).commands?.commands?.[this.command] as Command
+            const cmd = getCommand(this.app, this.command)
             if (cmd) {
                 cmd.checkCallback = this.originalCheckCallback
             }
         }
     }
+
 }

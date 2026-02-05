@@ -24,7 +24,7 @@ export class WikilinkNormalizer {
     }
 
     /** Normalize current file using editor */
-    public async normalizeCurrentFile(): Promise<void> {
+    public normalizeCurrentFile(): void {
         const view = this.app.workspace.getActiveViewOfType(MarkdownView)
         if (!view?.file) {
             return

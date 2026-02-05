@@ -17,7 +17,7 @@ export default class AutoWikilinkDisplayTextPlugin extends Plugin {
 		this.displayTextWriter = new DisplayTextWriter(this.app, this.settings)
 		this.commandInterceptor = new CommandInterceptor(this.app, "editor:save-file", () => {
 			if (this.settings.normalizeOnSave) {
-				this.normalizer.normalizeCurrentFile()
+				void this.normalizer.normalizeCurrentFile()
 			}
 		})
 		this.addChild(this.commandInterceptor)
@@ -43,7 +43,7 @@ export default class AutoWikilinkDisplayTextPlugin extends Plugin {
 			editorCheckCallback: (checking) => {
 				const view = this.app.workspace.getActiveViewOfType(MarkdownView)
 				if (!view) return false
-				if (!checking) this.normalizer.normalizeCurrentFile()
+				if (!checking) void this.normalizer.normalizeCurrentFile()
 				return true
 			}
 		})
@@ -60,7 +60,7 @@ export default class AutoWikilinkDisplayTextPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<AutoWikilinkDisplayTextSettings>)
 	}
 
 	async saveSettings() {

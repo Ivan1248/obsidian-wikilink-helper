@@ -53,12 +53,13 @@ export class AutoWikilinkDisplayTextSettingTab extends PluginSettingTab {
             .setHeading()
 
         containerEl.createEl('p', {
+            // eslint-disable-next-line obsidianmd/ui/sentence-case
             text: 'Normalization ensures wikilinks use the correct file name casing. E.g., if the file is named "Note.md", then [[note]] and [[note|note]] are normalized to [[Note|note]], while [[Note]] is left unchanged. This is useful to prevent broken links in case-sensitive static site generators.',
             cls: 'setting-item-description'
         })
 
         new Setting(containerEl)
-            .setName('Normalize on Ctrl+S')
+            .setName('Normalize on save command')
             .setDesc('Normalize wikilinks when saving with Ctrl+S (Cmd+S on Mac)')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.normalizeOnSave)
