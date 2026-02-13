@@ -27,7 +27,7 @@ export class AutoWikilinkDisplayTextSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Enable automatic display text insertion')
-            .setDesc('Automatically insert display text when typing | at the end of a wikilink')
+            .setDesc('Insert display text when typing | at the end of a wikilink.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableAutoDisplayText)
                 .onChange(async (value) => {
@@ -39,7 +39,7 @@ export class AutoWikilinkDisplayTextSettingTab extends PluginSettingTab {
         if (this.plugin.settings.enableAutoDisplayText) {
             new Setting(containerEl)
                 .setName('Lowercase first character')
-                .setDesc('Automatically lowercase the first character of the inserted display text')
+                .setDesc('Lowercase the first character of the inserted display text.')
                 .addToggle(toggle => toggle
                     .setValue(this.plugin.settings.lowercaseFirstChar)
                     .onChange(async (value) => {
@@ -54,13 +54,13 @@ export class AutoWikilinkDisplayTextSettingTab extends PluginSettingTab {
 
         containerEl.createEl('p', {
             // eslint-disable-next-line obsidianmd/ui/sentence-case
-            text: 'Normalization ensures wikilinks use the correct file name casing. E.g., if the file is named "Note.md", then [[note]] and [[note|note]] are normalized to [[Note|note]], while [[Note]] is left unchanged. This is useful to prevent broken links in case-sensitive static site generators.',
+            text: 'Normalization ensures that wikilinks use the correct file name casing. E.g., if the file is named "Note.md", then [[note]] and [[note|note]] are normalized to [[Note|note]], while [[Note]] is left unchanged. This is useful to prevent broken links in case-sensitive static site generators.',
             cls: 'setting-item-description'
         })
 
         new Setting(containerEl)
             .setName('Normalize on save command')
-            .setDesc('Normalize wikilinks when saving with Ctrl+S (Cmd+S on Mac)')
+            .setDesc('Normalize wikilinks when saving with Ctrl+S (Cmd+S on Mac).')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.normalizeOnSave)
                 .onChange(async (value) => {
@@ -70,7 +70,7 @@ export class AutoWikilinkDisplayTextSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Only normalize links to existing notes')
-            .setDesc('When disabled, also adds display text to links targeting non-existent notes if they start with a lowercase letter')
+            .setDesc('When disabled, also adds display text to links that start with a lowercase letter and target non-existent notes.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.onlyMatchExistingNotes)
                 .onChange(async (value) => {
