@@ -1,15 +1,10 @@
-import { App, MarkdownView, Notice, CachedMetadata, TFile } from 'obsidian'
+import { App, MarkdownView, Notice, CachedMetadata, Loc, TFile } from 'obsidian'
 import { AutoWikilinkDisplayTextSettings } from './types'
 
-export interface LinkReplacement {
-    from: { line: number; ch: number }
-    to: { line: number; ch: number }
+interface LinkReplacement {
+    start: Loc
+    end: Loc
     replacement: string
-}
-
-interface Position {
-    line: number
-    col: number
 }
 
 export class WikilinkNormalizer {
@@ -39,19 +34,15 @@ export class WikilinkNormalizer {
         }
 
         try {
-            const filenameMap = this.getFilenameMap()
-            const replacements = this.findLinkReplacements(
-                cache,
-                (start, end) => editor.getRange(
-                    { line: start.line, ch: start.col },
-                    { line: end.line, ch: end.col }
-                ),
-                filenameMap
-            )
+            const replacements = this.findLinkReplacements(cache, editor.getValue(), this.getFilenameMap())
 
             // Apply replacements in reverse order to maintain positions
-            for (const { from, to, replacement } of replacements) {
-                editor.replaceRange(replacement, from, to)
+            for (const { start, end, replacement } of replacements) {
+                editor.replaceRange(
+                    replacement,
+                    { line: start.line, ch: start.col },
+                    { line: end.line, ch: end.col }
+                )
             }
 
             if (replacements.length > 0) {
@@ -103,62 +94,31 @@ export class WikilinkNormalizer {
         const cache = this.app.metadataCache.getFileCache(file)
         if (!cache?.links || cache.links.length === 0) return 0
 
-        const content = await this.app.vault.read(file)
+        // Check first so that files needing no change are not rewritten
         const replacements = this.findLinkReplacements(
             cache,
-            (start, end) => this.extractText(content, start, end),
+            await this.app.vault.cachedRead(file),
             filenameMap
         )
-
         if (replacements.length === 0) return 0
 
-        // Apply replacements from end to start to maintain positions
-        let modifiedContent = content
-        for (const { from, to, replacement } of replacements) {
-            const offset = this.positionToOffset(content, from)
-            const endOffset = this.positionToOffset(content, to)
+        await this.app.vault.process(file, (content) => this.applyReplacements(content, replacements))
 
-            if (offset !== -1 && endOffset !== -1) {
-                modifiedContent =
-                    modifiedContent.slice(0, offset) +
-                    replacement +
-                    modifiedContent.slice(endOffset)
-            }
-        }
-
-        await this.app.vault.modify(file, modifiedContent)
         return replacements.length
     }
 
-    /** Convert line/col position to string offset */
-    private positionToOffset(text: string, pos: { line: number; ch: number }): number {
-        const lines = text.split('\n')
-        if (pos.line >= lines.length) return -1
+    /** Apply replacements, which must be ordered from last to first */
+    private applyReplacements(content: string, replacements: LinkReplacement[]): string {
+        const pieces: string[] = []
+        let tail = content.length
 
-        let offset = 0
-        for (let i = 0; i < pos.line; i++) {
-            offset += (lines[i]?.length ?? 0) + 1 // +1 for newline
+        for (const { start, end, replacement } of replacements) {
+            pieces.push(content.slice(end.offset, tail), replacement)
+            tail = start.offset
         }
-        offset += pos.ch
+        pieces.push(content.slice(0, tail))
 
-        return offset <= text.length ? offset : -1
-    }
-
-    /** Extract text between positions */
-    private extractText(content: string, start: Position, end: Position): string {
-        const lines = content.split('\n')
-
-        if (start.line === end.line) {
-            return lines[start.line]?.slice(start.col, end.col) ?? ""
-        }
-
-        let text = lines[start.line]?.slice(start.col) ?? ""
-        for (let i = start.line + 1; i < end.line; i++) {
-            text += '\n' + (lines[i] ?? "")
-        }
-        text += '\n' + (lines[end.line]?.slice(0, end.col) ?? "")
-
-        return text
+        return pieces.reverse().join("")
     }
 
     /** Build or retrieve cached filename map */
@@ -202,7 +162,8 @@ export class WikilinkNormalizer {
 
         if (!realName) {
             // Add display text if the target note is missing and the first letter is lowercase
-            if (!this.settings.onlyMatchExistingNotes && !existingDisplay && target.at(0)?.toUpperCase() !== target.at(0)) {
+            const firstChar = target.charAt(0)
+            if (!this.settings.onlyMatchExistingNotes && !existingDisplay && firstChar.toUpperCase() !== firstChar) {
                 return `[[${target}|${target}]]`
             }
             return null
@@ -223,7 +184,7 @@ export class WikilinkNormalizer {
     /** Find all link replacements for a file's cache */
     private findLinkReplacements(
         cache: CachedMetadata,
-        getText: (start: Position, end: Position) => string,
+        content: string,
         filenameMap: Map<string, string>
     ): LinkReplacement[] {
         if (!cache.links) return []
@@ -234,19 +195,14 @@ export class WikilinkNormalizer {
         const links = [...cache.links].reverse()
 
         for (const link of links) {
-            const { start, end } = link.position
-            const existing = getText(start, end)
-
             if (!link.link) continue
 
+            const { start, end } = link.position
+            const existing = content.slice(start.offset, end.offset)
             const replacement = this.computeReplacement(link.link, existing, filenameMap)
 
             if (replacement) {
-                replacements.push({
-                    from: { line: start.line, ch: start.col },
-                    to: { line: end.line, ch: end.col },
-                    replacement
-                })
+                replacements.push({ start, end, replacement })
             }
         }
 

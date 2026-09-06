@@ -62,8 +62,4 @@ export default class AutoWikilinkDisplayTextPlugin extends Plugin {
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<AutoWikilinkDisplayTextSettings>)
 	}
-
-	async saveSettings() {
-		await this.saveData(this.settings)
-	}
 }

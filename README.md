@@ -2,6 +2,10 @@
 
 A plugin for Obsidian that can automatically insert wikilink display text or normalize existing wikilinks.
 
+## Requirements
+
+- Obsidian v1.13.0+
+
 ## Features
 
 - **Automatic display text insertion**: Triggered by typing `|` at the end of a wikilink. Optionally, the first character can be lowercased.
@@ -19,6 +23,13 @@ A plugin for Obsidian that can automatically insert wikilink display text or nor
 
 ## Installation
 
+### Community plugins (recommended)
+
+1. In Obsidian, go to *Settings* → *Community plugins*.
+2. Make sure that *Restricted mode* is turned off, and click *Browse*.
+3. Search for **Wikilink Helper**.
+4. Click *Install*, then *Enable*.
+
 ### Via BRAT
 
 1.  Install the [Obsidian BRAT](https://github.com/TfTHacker/obsidian42-brat) plugin.
@@ -29,5 +40,20 @@ A plugin for Obsidian that can automatically insert wikilink display text or nor
 ### Manual installation
 
 1.  Download the latest release from the releases page.
-2.  Extract the `main.js`, `manifest.json`, and `styles.css` (if present) into `<your-vault>/.obsidian/plugins/wikilink-helper/`.
-3.  Restart Obsidian or reload the plugin in *Settings* > *Community plugins*.
+2.  Extract `main.js` and `manifest.json` into `<your-vault>/.obsidian/plugins/wikilink-helper/`.
+3.  Restart Obsidian or reload the plugin in *Settings* → *Community plugins*.
+
+## Development
+
+```bash
+npm install        # install dependencies
+npm run dev        # build in watch mode (for development)
+npm run build      # type-check and build for production
+npm run lint       # run ESLint
+```
+
+To test locally, put `main.js` and `manifest.json` into `<your-vault>/.obsidian/plugins/wikilink-helper/` and reload the plugin.
+
+## Other information
+
+- [Disclosures](https://docs.obsidian.md/Developer+policies#Disclosures) per Obsidian developer policies: none. The plugin doesn't use the network, doesn't collect any data, and doesn't access files outside of the vault.
