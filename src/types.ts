@@ -1,4 +1,4 @@
-export interface AutoWikilinkDisplayTextSettings {
+export interface WikilinkHelperSettings {
     enableAutoDisplayText: boolean
     lowercaseFirstChar: boolean
     normalizeOnSave: boolean

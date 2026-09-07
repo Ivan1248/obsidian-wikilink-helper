@@ -1,76 +1,66 @@
-import { App, MarkdownView, Notice, CachedMetadata, Loc, TFile } from 'obsidian'
-import { AutoWikilinkDisplayTextSettings } from './types'
+import { App, MarkdownView, Notice, CachedMetadata, TFile, parseLinktext } from 'obsidian'
+import { WikilinkHelperSettings } from './types'
+import { ParsedWikilink, parseWikilink } from './wikilink'
 
+/** A rewrite of one wikilink, as offsets in the original text */
 interface LinkReplacement {
-    start: Loc
-    end: Loc
+    start: number
+    end: number
     replacement: string
 }
 
 export class WikilinkNormalizer {
     private app: App
-    private settings: AutoWikilinkDisplayTextSettings
+    private getSettings: () => WikilinkHelperSettings
     private isNormalizing = false
-    private filenameMapCache: Map<string, string> | null = null
 
-    constructor(app: App, settings: AutoWikilinkDisplayTextSettings) {
+    constructor(app: App, getSettings: () => WikilinkHelperSettings) {
         this.app = app
-        this.settings = settings
+        this.getSettings = getSettings
     }
 
-    /** Normalize current file using editor */
-    public normalizeCurrentFile(): void {
+    /**
+     * Normalize current file using editor. Returns how many links were normalized, or null if
+     * there was no active file.
+     */
+    public normalizeCurrentFile(): number | null {
         const view = this.app.workspace.getActiveViewOfType(MarkdownView)
-        if (!view?.file) {
-            return
-        }
+        if (!view?.file) return null
 
         const file = view.file
         const editor = view.editor
         const cache = this.app.metadataCache.getFileCache(file)
+        if (!cache?.links?.length) return 0
 
-        if (!cache?.links || cache.links.length === 0) {
-            return
-        }
+        const replacements = this.findLinkReplacements(cache, editor.getValue(), file.path)
+        if (replacements.length === 0) return 0
 
-        try {
-            const replacements = this.findLinkReplacements(cache, editor.getValue(), this.getFilenameMap())
+        // A single transaction so the whole normalization is one undo step.
+        // The offsets index the string just read from the editor, and nothing can edit
+        // it in between, so offsetToPos maps them back exactly.
+        editor.transaction({
+            changes: replacements.map(({ start, end, replacement }) => ({
+                from: editor.offsetToPos(start),
+                to: editor.offsetToPos(end),
+                text: replacement
+            }))
+        })
 
-            // Apply replacements in reverse order to maintain positions
-            for (const { start, end, replacement } of replacements) {
-                editor.replaceRange(
-                    replacement,
-                    { line: start.line, ch: start.col },
-                    { line: end.line, ch: end.col }
-                )
-            }
-
-            if (replacements.length > 0) {
-                new Notice(`Normalized ${replacements.length} wikilink(s)`)
-            }
-        } catch (error) {
-            console.error("Error normalizing current file:", error)
-            new Notice("Error normalizing file")
-        }
+        new Notice(`Normalized ${replacements.length} wikilink(s)`)
+        return replacements.length
     }
 
-    /** Normalize entire vault */
     public async normalizeAllFiles(): Promise<void> {
-        if (this.isNormalizing) {
-            return
-        }
+        if (this.isNormalizing) return
 
         this.isNormalizing = true
         try {
-            const filenameMap = this.getFilenameMap()
             let fileCount = 0
             let linkCount = 0
 
-            const files = this.app.vault.getMarkdownFiles()
-
-            for (const file of files) {
+            for (const file of this.app.vault.getMarkdownFiles()) {
                 try {
-                    const count = await this.normalizeFile(file, filenameMap)
+                    const count = await this.normalizeFile(file)
                     if (count > 0) {
                         fileCount++
                         linkCount += count
@@ -86,20 +76,12 @@ export class WikilinkNormalizer {
         }
     }
 
-    /** Normalize a single file */
-    private async normalizeFile(
-        file: TFile,
-        filenameMap: Map<string, string>
-    ): Promise<number> {
+    private async normalizeFile(file: TFile): Promise<number> {
         const cache = this.app.metadataCache.getFileCache(file)
         if (!cache?.links || cache.links.length === 0) return 0
 
-        // Check first so that files needing no change are not rewritten
-        const replacements = this.findLinkReplacements(
-            cache,
-            await this.app.vault.cachedRead(file),
-            filenameMap
-        )
+        const content = await this.app.vault.cachedRead(file)
+        const replacements = this.findLinkReplacements(cache, content, file.path)
         if (replacements.length === 0) return 0
 
         await this.app.vault.process(file, (content) => this.applyReplacements(content, replacements))
@@ -107,106 +89,89 @@ export class WikilinkNormalizer {
         return replacements.length
     }
 
-    /** Apply replacements, which must be ordered from last to first */
+    /** Apply replacements, which must be ordered from first to last */
     private applyReplacements(content: string, replacements: LinkReplacement[]): string {
         const pieces: string[] = []
-        let tail = content.length
+        let cursor = 0
 
         for (const { start, end, replacement } of replacements) {
-            pieces.push(content.slice(end.offset, tail), replacement)
-            tail = start.offset
+            pieces.push(content.slice(cursor, start), replacement)
+            cursor = end
         }
-        pieces.push(content.slice(0, tail))
+        pieces.push(content.slice(cursor))
 
-        return pieces.reverse().join("")
+        return pieces.join("")
     }
 
-    /** Build or retrieve cached filename map */
-    private getFilenameMap(): Map<string, string> {
-        if (!this.filenameMapCache) {
-            this.filenameMapCache = this.buildFilenameMap()
-        }
-        return this.filenameMapCache
-    }
+    /** Compute the replacement for a single link, or null if it should be left alone */
+    private computeReplacement(link: ParsedWikilink, sourcePath: string): string | null {
+        // `subpath` is the "#heading" or "#^block" part, "" when there is none.
+        const { path, subpath } = parseLinktext(link.target)
 
-    /** Invalidate filename cache (call when files are created/renamed) */
-    public invalidateCache(): void {
-        this.filenameMapCache = null
-    }
+        // A link into the current file ([[#Heading]]) has no note part
+        if (path === "") return null
 
-    /** Build map: lowercase filename -> real filename */
-    private buildFilenameMap(): Map<string, string> {
-        const map = new Map<string, string>()
-        for (const file of this.app.vault.getMarkdownFiles()) {
-            map.set(file.basename.toLowerCase(), file.basename)
-        }
-        return map
-    }
+        // getFirstLinkpathDest resolves case-insensitively
+        const dest = this.app.metadataCache.getFirstLinkpathDest(path, sourcePath)
 
-    /** Compute replacement for a single link, or null if no change needed */
-    private computeReplacement(
-        target: string,
-        existing: string,
-        filenameMap: Map<string, string>
-    ): string | null {
-        // Validate wikilink format
-        if (!existing.startsWith("[[") || !existing.endsWith("]]")) {
-            return null
-        }
-
-        const inner = existing.slice(2, -2)
-        const pipeIndex = inner.indexOf("|")
-        const existingDisplay = pipeIndex !== -1 ? inner.slice(pipeIndex + 1) : null
-
-        const realName = filenameMap.get(target.toLowerCase())
-
-        if (!realName) {
+        // Process link to nonexistent note
+        if (dest === null) {
             // Add display text if the target note is missing and the first letter is lowercase
-            const firstChar = target.charAt(0)
-            if (!this.settings.onlyMatchExistingNotes && !existingDisplay && firstChar.toUpperCase() !== firstChar) {
-                return `[[${target}|${target}]]`
+            const firstChar = path.charAt(0)
+            if (
+                !this.getSettings().onlyMatchExistingNotes &&
+                link.display === null &&
+                firstChar.toUpperCase() !== firstChar
+            ) {
+                return `[[${path}${subpath}|${path}${subpath}]]`
             }
             return null
         }
 
-        // File exists - check if update needed
-        const targetMatches = realName === target
-        if (targetMatches) {
-            return null // Already correct casing, and we don't force display text if missing (e.g. [[Property]])
-        }
+        // Links to attachments and other non-notes are out of scope
+        if (dest.extension !== "md") return null
 
-        // Casing mismatch (target vs realName) or missing display text for non-matching target
-        // Use existing display text or original target as display
-        const displayText = existingDisplay ?? target
-        return `[[${realName}|${displayText}]]`
+        // A link written with a folder keeps its folder, recased; a bare name stays bare
+        const target = path.includes("/")
+            ? dest.path.slice(0, -(dest.extension.length + 1))
+            : dest.basename
+
+        // Only a pure miscasing is rewritten
+        if (target === path || target.toLowerCase() !== path.toLowerCase()) return null
+
+        // Preserve what the link rendered as before: existing display text, or the path as written
+        return `[[${target}${subpath}|${link.display ?? path + subpath}]]`
     }
 
-    /** Find all link replacements for a file's cache */
+    /**
+     * Find all link replacements for a file, in ascending position order.
+     *
+     * `cache.links` is the only source of candidates, so anything Obsidian does not index as
+     * a link – code blocks, code spans, frontmatter, embeds – is out of scope for free.
+     */
     private findLinkReplacements(
         cache: CachedMetadata,
         content: string,
-        filenameMap: Map<string, string>
+        sourcePath: string
     ): LinkReplacement[] {
-        if (!cache.links) return []
+        return (cache.links ?? [])
+            .map((linkCache): LinkReplacement | null => {
+                const start = linkCache.position.start.offset
+                const end = linkCache.position.end.offset
 
-        const replacements: LinkReplacement[] = []
+                // The cache can lag the content and misplace the offsets. Therefore, the position 
+                // is verified. A misplaced link is left for a later run.
+                if (content.slice(start, end) !== linkCache.original) return null
 
-        // Process from bottom to top so positions stay valid
-        const links = [...cache.links].reverse()
+                // Parsed from cached content rather than read off `.link`/`.displayText`
+                const parsedLink = parseWikilink(linkCache.original)
+                if (!parsedLink) return null
 
-        for (const link of links) {
-            if (!link.link) continue
-
-            const { start, end } = link.position
-            const existing = content.slice(start.offset, end.offset)
-            const replacement = this.computeReplacement(link.link, existing, filenameMap)
-
-            if (replacement) {
-                replacements.push({ start, end, replacement })
-            }
-        }
-
-        return replacements
+                const replacement = this.computeReplacement(parsedLink, sourcePath)
+                return replacement ? { start, end, replacement } : null
+            })
+            .filter((r): r is LinkReplacement => r !== null)
+            // ascending positions are required by consumers
+            .sort((a, b) => a.start - b.start)
     }
 }
-

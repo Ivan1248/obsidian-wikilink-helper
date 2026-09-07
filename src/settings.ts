@@ -1,16 +1,16 @@
 import { App, PluginSettingTab, SettingDefinitionItem } from 'obsidian'
-import { AutoWikilinkDisplayTextSettings } from './types'
-import AutoWikilinkDisplayTextPlugin from './main'
+import { WikilinkHelperSettings } from './types'
+import WikilinkHelperPlugin from './main'
 
-export const DEFAULT_SETTINGS: AutoWikilinkDisplayTextSettings = {
+export const DEFAULT_SETTINGS: WikilinkHelperSettings = {
     enableAutoDisplayText: true,
     lowercaseFirstChar: true,
     normalizeOnSave: false,
     onlyMatchExistingNotes: true
 }
 
-export class AutoWikilinkDisplayTextSettingTab extends PluginSettingTab {
-    constructor(app: App, public plugin: AutoWikilinkDisplayTextPlugin) {
+export class WikilinkHelperSettingTab extends PluginSettingTab {
+    constructor(app: App, public plugin: WikilinkHelperPlugin) {
         super(app, plugin)
     }
 
@@ -18,7 +18,7 @@ export class AutoWikilinkDisplayTextSettingTab extends PluginSettingTab {
      * Declarative settings (requires Obsidian 1.13.0+, see manifest minAppVersion).
      * The tab is rendered and indexed for settings search from these definitions.
      */
-    getSettingDefinitions(): SettingDefinitionItem<keyof AutoWikilinkDisplayTextSettings>[] {
+    getSettingDefinitions(): SettingDefinitionItem<keyof WikilinkHelperSettings>[] {
         return [
             {
                 type: 'group',

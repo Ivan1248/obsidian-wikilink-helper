@@ -1,13 +1,14 @@
 import { App, MarkdownView } from 'obsidian'
-import { AutoWikilinkDisplayTextSettings } from './types'
+import { WikilinkHelperSettings } from './types'
+import { parseWikilink } from './wikilink'
 
 export class DisplayTextWriter {
     private app: App
-    private settings: AutoWikilinkDisplayTextSettings
+    private getSettings: () => WikilinkHelperSettings
 
-    constructor(app: App, settings: AutoWikilinkDisplayTextSettings) {
+    constructor(app: App, getSettings: () => WikilinkHelperSettings) {
         this.app = app
-        this.settings = settings
+        this.getSettings = getSettings
     }
 
     public handlePipeKey(event: KeyboardEvent) {
@@ -17,29 +18,37 @@ export class DisplayTextWriter {
         const editor = view.editor
         const cursor = editor.getCursor()
 
-        const linkInfo = this.findWikilinkAtCursor(editor.getLine(cursor.line), cursor.ch)
-        if (!linkInfo || cursor.ch !== linkInfo.end - 2) return
+        const target = this.plainLinkTargetBefore(editor.getLine(cursor.line), cursor.ch)
+        if (target === null) return
 
         event.preventDefault()
 
-        let displayText = linkInfo.linkText
-        if (this.settings.lowercaseFirstChar && displayText.length > 0) {
+        let displayText = target
+        if (this.getSettings().lowercaseFirstChar) {
             displayText = displayText.charAt(0).toLowerCase() + displayText.slice(1)
         }
 
-        editor.replaceRange(`|${displayText}`, cursor)
-        editor.setCursor({ line: cursor.line, ch: cursor.ch + 1 })
+        // Insert and select the display text in one step, so it can be overtyped
+        const displayStart = cursor.ch + 1
+        editor.transaction({
+            changes: [{ from: cursor, text: `|${displayText}` }],
+            selection: {
+                from: { line: cursor.line, ch: displayStart },
+                to: { line: cursor.line, ch: displayStart + displayText.length }
+            }
+        })
     }
 
-    private findWikilinkAtCursor(line: string, cursorCh: number): { start: number; end: number; linkText: string } | null {
+    /** The target of a plain wikilink whose closing `]]` begins at `cursorCh`, or null */
+    private plainLinkTargetBefore(line: string, cursorCh: number): string | null {
+        if (!line.startsWith(']]', cursorCh)) return null
+
         const start = line.lastIndexOf('[[', cursorCh)
         if (start === -1) return null
-        const end = line.indexOf(']]', cursorCh) + 2
-        if (end === -1) return null
 
-        const content = line.substring(start, end)
-        if (!/^\[\[[^[\]|]+\]\]$/.test(content)) return null
+        const parsed = parseWikilink(line.slice(start, cursorCh + 2))
+        if (!parsed || parsed.display !== null) return null
 
-        return { start: start, end: end, linkText: content.slice(2, -2) }
+        return parsed.target
     }
 }
