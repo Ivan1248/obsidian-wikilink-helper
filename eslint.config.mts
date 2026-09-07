@@ -20,7 +20,9 @@ export default defineConfig(
             },
             parserOptions: {
                 projectService: {
-                    allowDefaultProject: ['eslint.config.mts', 'manifest.json'],
+                    // eslint.config.mts is not listed here: tsconfig.json includes it, so it
+                    // has a real project and listing it again is an error
+                    allowDefaultProject: ['manifest.json'],
                 },
                 tsconfigRootDir: import.meta.dirname,
                 extraFileExtensions: ['.json'],

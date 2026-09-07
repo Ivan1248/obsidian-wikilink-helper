@@ -10,7 +10,7 @@ A plugin for Obsidian that can automatically insert wikilink display text or nor
 
 - **Automatic display text insertion**: Triggered by typing `|` at the end of a wikilink. Optionally, the first character can be lowercased.
     - Example: If the target file name is `Note.md`, `[[Note|]]` (`|` just typed) → `[[Note|note]]`
-- **Wikilink normalization**: Triggered via commands, or by pressing `Ctrl`+`S` if enabled in the settings.
+- **Wikilink normalization**: Triggered via commands, or by the save command (`Ctrl`+`S`).
     - Examples:
         - `[[note]]` → `[[Note|note]]`
         - `[[note|note]]` → `[[Note|note]]`

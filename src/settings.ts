@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, SettingDefinitionItem } from 'obsidian'
+import { App, Platform, PluginSettingTab, SettingDefinitionItem } from 'obsidian'
 import { WikilinkHelperSettings } from './types'
 import WikilinkHelperPlugin from './main'
 
@@ -53,7 +53,7 @@ export class WikilinkHelperSettingTab extends PluginSettingTab {
                     },
                     {
                         name: 'Normalize on save command',
-                        desc: 'Normalize wikilinks when saving with Ctrl+S (Cmd+S on Mac).',
+                        desc: `Normalize wikilinks when saving with ${Platform.isMacOS ? 'Cmd' : 'Ctrl'}+S.`,
                         control: {
                             type: 'toggle',
                             key: 'normalizeOnSave'

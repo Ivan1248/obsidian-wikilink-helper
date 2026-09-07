@@ -2,7 +2,7 @@ import { Plugin, Notice } from 'obsidian'
 import { WikilinkHelperSettings } from './types'
 import { DEFAULT_SETTINGS, WikilinkHelperSettingTab } from './settings'
 import { WikilinkNormalizer } from './normalizer'
-import { DisplayTextWriter } from './display-text-writer'
+import { createDisplayTextExtension } from './auto-display-text'
 import { CommandInterceptor } from './command-interceptor'
 
 export default class WikilinkHelperPlugin extends Plugin {
@@ -13,7 +13,6 @@ export default class WikilinkHelperPlugin extends Plugin {
         await this.loadSettings()
 
         const normalizer = new WikilinkNormalizer(this.app, () => this.settings)
-        const displayTextWriter = new DisplayTextWriter(this.app, () => this.settings)
 
         this.addChild(new CommandInterceptor(this.app, "editor:save-file", () => {
             if (this.settings.normalizeOnSave) {
@@ -23,12 +22,9 @@ export default class WikilinkHelperPlugin extends Plugin {
 
         this.addSettingTab(new WikilinkHelperSettingTab(this.app, this))
 
-        // Existing behavior: listen for "|"
-        this.registerDomEvent(document, 'keydown', (event: KeyboardEvent) => {
-            if (event.key === '|' && this.settings.enableAutoDisplayText) {
-                displayTextWriter.handlePipeKey(event)
-            }
-        })
+        // Insert display text when "|" is typed at the end of a wikilink. Obsidian removes
+        // the extension on unload, so it needs no `register*` wrapper of its own.
+        this.registerEditorExtension(createDisplayTextExtension(() => this.settings))
 
         // Command: normalize current file
         this.addCommand({

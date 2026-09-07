@@ -13,7 +13,12 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "allowSyntheticDefaultImports": true,
-        "lib": ["ES2021", "DOM"]
+        "lib": ["ES2021", "DOM"],
+        // Explicit, so editors do not depend on auto-discovery of node_modules/@types to
+        // type eslint.config.mts (import.meta.dirname). Node APIs in src/ are blocked by lint.
+        "types": ["node"]
     },
-    "include": ["src/**/*.ts"]
+    // eslint.config.mts is included so editors type-check it in this project
+    // rather than an inferred one, where @types/node (import.meta.dirname) is missing
+    "include": ["src/**/*.ts", "eslint.config.mts"]
 }
