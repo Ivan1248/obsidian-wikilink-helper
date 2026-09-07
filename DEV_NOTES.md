@@ -1,0 +1,1 @@
+This project is based on the sample plugin: https://github.com/obsidianmd/obsidian-sample-plugin/tree/master

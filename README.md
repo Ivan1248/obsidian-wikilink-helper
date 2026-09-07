@@ -10,16 +10,18 @@ A plugin for Obsidian that can automatically insert wikilink display text or nor
 
 - **Automatic display text insertion**: Triggered by typing `|` at the end of a wikilink. Optionally, the first character can be lowercased.
     - Example: If the target file name is `Note.md`, `[[Note|]]` (`|` just typed) → `[[Note|note]]`
-- **Wikilink normalization**: Triggered via commands or by pressing `Ctrl`+`S`.
-    - Examples: 
+- **Wikilink normalization**: Triggered via commands, or by pressing `Ctrl`+`S` if enabled in the settings.
+    - Examples:
         - `[[note]]` → `[[Note|note]]`
         - `[[note|note]]` → `[[Note|note]]`
+        - `[[folder/note]]` → `[[Folder/Note|folder/note]]`
         - `[[Note]]` → `[[Note]]` (no change)
+    - Optionally, display text is also added to lowercase links whose target doesn't exist yet: `[[idea]]` → `[[idea|idea]]`
 
 ## Use cases
 
-- **Preserving lowercase display text**: If you use a link like `[[note]]` to a file named `Note.md`, but then rename the file to `Article.md`, Obsidian will update `[[note]]` to `[[Article]]`, but you would prefer `[[Article|note]]`. By using `[[Note|note]]`,the display text remains `note`.
-- **Compatibility with external tools**: While Obsidian is case-insensitive for links, many static site generators (like Quartz or Hugo) are case-sensitive. Wikilink normalization ensures that links match the actual file name casing, preventing broken links in external publishing workflows.
+- **Preserving lowercase display text**: If you use a link like `[[note]]` to a file named `Note.md`, but then rename the file to `Article.md`, Obsidian will update `[[note]]` to `[[Article]]`, but you would prefer `[[Article|note]]`. By using `[[Note|note]]`, the display text remains `note`.
+- **Compatibility with external tools**: While Obsidian is case-insensitive for links, many static site generators (like Quartz or Hugo) are case-sensitive. Wikilink normalization ensures that links match the actual file and folder name casing, preventing broken links in external publishing workflows.
 
 ## Installation
 
