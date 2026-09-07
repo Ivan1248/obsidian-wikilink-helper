@@ -1,10 +1,10 @@
 {
-    "id": "wikilink-helper",
-    "name": "Wikilink Helper",
-    "version": "1.1.0",
-    "minAppVersion": "1.13.0",
-    "description": "Automatically adds wikilink display text or normalizes existing wikilinks.",
-    "author": "Ivan Grubišić",
-    "authorUrl": "https://github.com/ivan1248",
-    "isDesktopOnly": false
+	"id": "wikilink-helper",
+	"name": "Wikilink Helper",
+	"version": "1.2.0",
+	"minAppVersion": "1.13.0",
+	"description": "Automatically adds wikilink display text or normalizes existing wikilinks.",
+	"author": "Ivan Grubišić",
+	"authorUrl": "https://github.com/ivan1248",
+	"isDesktopOnly": false
 }
