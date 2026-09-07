@@ -27,10 +27,7 @@ A plugin for Obsidian that can automatically insert wikilink display text or nor
 
 ### Community plugins (recommended)
 
-1. In Obsidian, go to *Settings* → *Community plugins*.
-2. Make sure that *Restricted mode* is turned off, and click *Browse*.
-3. Search for **Wikilink Helper**.
-4. Click *Install*, then *Enable*.
+Install via *Settings* → *Community plugins* in Obsidian.
 
 ### Via BRAT
 
@@ -53,8 +50,6 @@ npm run dev        # build in watch mode (for development)
 npm run build      # type-check and build for production
 npm run lint       # run ESLint
 ```
-
-To test locally, put `main.js` and `manifest.json` into `<your-vault>/.obsidian/plugins/wikilink-helper/` and reload the plugin.
 
 ## Other information
 
